@@ -35,6 +35,7 @@ KernelPatch 模块栈：一次加载 `stealth.kpm`，同时具备 **maps 隐藏�
 | `kpms/common/` | KPM 公共头 |
 | `tools/stealth_inject/` | 用户态一键注入器 |
 | `tools/dbc_rw/` | 用户态读写库 + `example_rw` |
+| `examples/dbc_lostgo_hook/` | 注入 `libdbc.so` 的完整例子（WxShadow 挂钩 + kload 启动器） |
 | `.kp/` | [KernelPatch](https://github.com/bmax121/KernelPatch) 子模块 |
 | `setup-kp.sh` | 拉 KernelPatch 并建立 `kernel` 符号链接 |
 
@@ -400,7 +401,23 @@ adb shell su -c 'dmesg | grep wxshadow'
 
 配合用户态 hook 时：跳板代码不要去读同一页；wxshadow 隐藏的是执行页上的修改，读侧仍是原文。
 
-### 5. 卸载
+### 5. 完整例子：`examples/dbc_lostgo_hook`
+
+仓库里的 **DBC** 例子会编出 `libdbc.so` + 单文件启动器 `dbc`：constructor 起线程，用 WxShadow 挂 `libUE4` 渲染函数，业务写在 `OnRenderEnter`。启动器内嵌 so，走 kload 注入。
+
+详见 [examples/dbc_lostgo_hook/README.md](examples/dbc_lostgo_hook/README.md)。
+
+```bash
+cmake -S examples/dbc_lostgo_hook -B examples/dbc_lostgo_hook/cmake-build-release-ndk28 -G Ninja
+cmake --build examples/dbc_lostgo_hook/cmake-build-release-ndk28 -j
+adb push examples/dbc_lostgo_hook/outputs/arm64-v8a/dbc /data/local/tmp/dbc
+adb shell su -c '/data/local/tmp/dbc --package com.tencent.letsgo --key "'"$KEY"'"'
+adb logcat -s DbcHK
+```
+
+帧逻辑改 `examples/dbc_lostgo_hook/DBC/modules/engine/Engine.cppm`。
+
+### 6. 卸载
 
 ```bash
 adb shell su -c '/data/local/tmp/kpatch "'"$KEY"'" kpm unload stealth'

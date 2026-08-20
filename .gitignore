@@ -2,7 +2,7 @@
 .vscode/
 **/.vscode/
 build/
-cmake-build-debug/
+cmake-build-*/
 *.o
 *.a
 *.so
@@ -13,3 +13,5 @@ cmake-build-debug/
 tools/dbc_rw/example_rw
 tools/stealth_inject/stealth_inject
 kpms/wxshadow/wxshadow_client
+examples/**/outputs/
+examples/**/launcher/so_embed.c
