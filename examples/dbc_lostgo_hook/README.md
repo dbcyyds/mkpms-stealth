@@ -1,66 +1,54 @@
-# dbc_lostgo_hook 例子
+# dbc_lostgo_hook + KPM 一体
 
-注入目标进程的 **`libdbc.so`** 示例：constructor 起线程 → WxShadow 挂渲染函数 → `OnRenderEnter` 跑业务。启动器 **`dbc`** 把 so 内嵌进去，用内核 **kload** 注入，不需要 tinjector / ptrace。
+`mkpms-stealth` 仓库里的完整例子：单文件 **`dbc`** 内嵌 `libdbc.so`，用内核 **kload** 注入目标进程，**WxShadow** 挂钩子。无需 tinjector / ptrace / 单独 stealth_inject。
 
-依赖本仓库编出的 `stealth.kpm`（hide-maps + kload + wxshadow + dbc-rw）。
+仓库已带编好的 `outputs/arm64-v8a/{dbc,libdbc.so}` 和 `prebuilt/stealth.kpm`。未纳入 git 的只有 CLion `.idea`、`cmake-build-*`、`outputs.zip`，以及构建时自动生成的 `launcher/so_embed.c`。
 
-## 目录
+## 产出
 
-| 路径 | 说明 |
-|------|------|
-| `DBC/Main.cpp` | so 入口：constructor / destructor |
-| `DBC/modules/core/` | Memory、Hook、WxShadow、偏移 |
-| `DBC/modules/engine/Engine.cppm` | `InitEngine`、`OnRenderEnter`（业务改这里） |
-| `DBC/modules/ue/` | UE 容器 / 对象 / SDK（未编进默认目标，可自行挂上） |
-| `DBC/modules/game/Task.cppm` | 游戏任务逻辑（同上，默认未链） |
-| `DbcHideSoinfo/` | 从 linker solist 摘掉 so |
-| `launcher/dbc_main.c` | 启动器：释放 so、load kpm、kload 注入 |
-| `scripts/embed_so.py` | 把 `libdbc.so` 编进启动器 |
-
-默认 CMake 只编 core + Engine（见根 `CMakeLists.txt` 的 `DBC_MODULES`）。
+```
+outputs/arm64-v8a/
+  libdbc.so   # 注入模块（Engine + Hook + hide soinfo）
+  dbc         # 启动器（so 已内嵌）
+prebuilt/
+  stealth.kpm # hide-maps + kload + wxshadow 四合一
+```
 
 ## 编译
 
-需要 Android NDK（CMake 默认 `D:/SDK/ndk/28.2.13676358`，可用 `-DNDK_PATH=` 改）和 CMake ≥ 3.28（C++23 modules）。
+CMake 使用 NDK `D:/SDK/ndk/28.2.13676358`，配置并构建：
 
-```bash
-# 先在仓库根目录编好 stealth.kpm
-cmake -S ../.. -B ../../build -DCMAKE_C_COMPILER=aarch64-linux-gnu-gcc
-cmake --build ../../build --target stealth.kpm -j
-
-# 再编本例子
+```text
 cmake -S . -B cmake-build-release-ndk28 -G Ninja
 cmake --build cmake-build-release-ndk28 -j
 ```
 
-或 CLion 打开本目录直接 Build。Windows 也可用 `python build.py`。
-
-产物：
-
-```
-outputs/arm64-v8a/libdbc.so   # 注入模块
-outputs/arm64-v8a/dbc         # 单文件启动器（so 已内嵌）
-```
+CLion 直接 Build 亦可。
 
 ## 设备运行
 
 ```bash
-KEY='your-superkey'
+# 需 root + APatch kpatch
 adb push outputs/arm64-v8a/dbc /data/local/tmp/dbc
-adb push ../../build/kpms/stealth/stealth.kpm /data/local/tmp/stealth.kpm
-adb shell su -c 'chmod 755 /data/local/tmp/dbc'
-adb shell su -c '/data/local/tmp/kpatch "'"$KEY"'" kpm load /data/local/tmp/stealth.kpm'
-adb shell su -c '/data/local/tmp/dbc --package com.tencent.letsgo --key "'"$KEY"'"'
+adb push prebuilt/stealth.kpm /data/local/tmp/stealth.kpm
+adb shell su -c 'chmod 755 /data/local/tmp/dbc /data/local/tmp/kpatch'
+adb shell su -c '/data/local/tmp/kpatch "KEY" kpm load /data/local/tmp/stealth.kpm'
+adb shell su -c '/data/local/tmp/dbc --package com.tencent.letsgo --key "KEY"'
 adb logcat -s DbcHK
 ```
 
-启动器会：释放内嵌 so → 等包名进程和 `libUE4.so` → kload 劫持 `dlopen` → so 里 `InitEngine` 用 WxShadow 挂 `libUE4+kRenderOffset`。
+或直接双击 `m.bat`。
 
-Windows 可改 `m.bat` 里的 push/run。
+## 流程
+
+1. `dbc` 释放内嵌 so → `/data/local/tmp/.dxxxxxxxx`
+2. 加载 `stealth.kpm`（若未就绪）
+3. 启动/等待 `com.tencent.letsgo` + `libUE4.so`
+4. **kload** 劫持目标 `dlopen` 加载模块
+5. so 内 `InitEngine` → WxShadow 挂渲染函数 → 业务 `OnRenderEnter`
 
 ## 业务改哪里
 
 - 帧逻辑：`DBC/modules/engine/Engine.cppm` → `OnRenderEnter`
-- 渲染偏移：同文件 `kRenderOffset`
-- UE 偏移：`DBC/modules/core/GameOffsets.cppm`
-- 包名 / 密钥：`launcher/dbc_main.c` 默认值，或命令行 `--package` / `--key`
+- 偏移：`DBC/modules/core/GameOffsets.cppm`、`kRenderOffset`
+- 包名/密钥：`launcher/dbc_main.c` 默认值，或命令行 `--package` / `--key`
