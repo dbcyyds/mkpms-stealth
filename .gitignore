@@ -1,0 +1,15 @@
+.idea/
+.vscode/
+**/.vscode/
+build/
+cmake-build-debug/
+*.o
+*.a
+*.so
+*.kpm
+*.zip
+*.bak
+*.swp
+tools/dbc_rw/example_rw
+tools/stealth_inject/stealth_inject
+kpms/wxshadow/wxshadow_client
