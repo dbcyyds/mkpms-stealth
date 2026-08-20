@@ -11,20 +11,20 @@
 #include <sys/syscall.h>
 #include "syscall_arch.h"
 
-#define X_GET_VERSION 0
-#define X_READ_MEMORY 1
-#define X_WRITE_MEMORY 2
-#define X_MAGIC 0x1b1841fd2c1e0000ULL
+#define DBC_GET_VERSION 0
+#define DBC_READ_MEMORY 1
+#define DBC_WRITE_MEMORY 2
+#define DBC_MAGIC 0x1b1841fd2c1e0000ULL
 
-#define XCALL(cmd, ...) syscall(41, X_MAGIC | (cmd), ##__VA_ARGS__)
+#define DBC_CALL(cmd, ...) syscall(41, DBC_MAGIC | (cmd), ##__VA_ARGS__)
 
 inline pid_t gpid = 0;
 
-namespace X
+namespace Dbc
 {
 	inline bool init(pid_t pid)
 	{
-		long ver = XCALL(X_GET_VERSION);
+		long ver = DBC_CALL(DBC_GET_VERSION);
 		if (ver <= 0) {
 			std::cerr << "dbc-rw not loaded, ver=" << ver << std::endl;
 			return false;
@@ -35,27 +35,27 @@ namespace X
 
 	inline bool read(uint64_t addr, void *buffer, size_t size)
 	{
-		return XCALL(X_READ_MEMORY, gpid, addr, buffer, size) == (long)size;
+		return DBC_CALL(DBC_READ_MEMORY, gpid, addr, buffer, size) == (long)size;
 	}
 
 	template <typename T>
 	inline T read(uint64_t addr)
 	{
 		T res{};
-		if (X::read(addr, &res, sizeof(T)))
+		if (Dbc::read(addr, &res, sizeof(T)))
 			return res;
 		return {};
 	}
 
 	inline bool write(uint64_t addr, void *buffer, size_t size)
 	{
-		return XCALL(X_WRITE_MEMORY, gpid, addr, buffer, size) == (long)size;
+		return DBC_CALL(DBC_WRITE_MEMORY, gpid, addr, buffer, size) == (long)size;
 	}
 
 	template <typename T>
 	inline bool write(uint64_t addr, T value)
 	{
-		return X::write(addr, &value, sizeof(T));
+		return Dbc::write(addr, &value, sizeof(T));
 	}
 
 	/* 对照：正规 process_vm_*（非内核 dbc-rw） */
@@ -70,7 +70,7 @@ namespace X
 	inline T uread(uint64_t addr)
 	{
 		T res{};
-		if (X::uread(addr, &res, sizeof(T)))
+		if (Dbc::uread(addr, &res, sizeof(T)))
 			return res;
 		return {};
 	}
@@ -85,7 +85,7 @@ namespace X
 	template <typename T>
 	inline bool uwrite(uint64_t addr, T value)
 	{
-		return X::uwrite(addr, &value, sizeof(T));
+		return Dbc::uwrite(addr, &value, sizeof(T));
 	}
 
 	inline int getPID(const char *PackageName)
@@ -123,15 +123,15 @@ namespace X
 	}
 }
 
-#define RB(addr) (X::read<int8_t>(addr))
-#define RW(addr) (X::read<int16_t>(addr))
-#define RD(addr) (X::read<int32_t>(addr))
-#define RQ(addr) (X::read<uint64_t>(addr))
-#define RF(addr) (X::read<float>(addr))
-#define RE(addr) (X::read<double>(addr))
-#define WB(addr, value) X::write<int8_t>((addr), (value))
-#define WW(addr, value) X::write<int16_t>((addr), (value))
-#define WD(addr, value) X::write<int32_t>((addr), (value))
-#define WQ(addr, value) X::write<uint64_t>((addr), (value))
-#define WF(addr, value) X::write<float>((addr), (value))
-#define WE(addr, value) X::write<double>((addr), (value))
+#define RB(addr) (Dbc::read<int8_t>(addr))
+#define RW(addr) (Dbc::read<int16_t>(addr))
+#define RD(addr) (Dbc::read<int32_t>(addr))
+#define RQ(addr) (Dbc::read<uint64_t>(addr))
+#define RF(addr) (Dbc::read<float>(addr))
+#define RE(addr) (Dbc::read<double>(addr))
+#define WB(addr, value) Dbc::write<int8_t>((addr), (value))
+#define WW(addr, value) Dbc::write<int16_t>((addr), (value))
+#define WD(addr, value) Dbc::write<int32_t>((addr), (value))
+#define WQ(addr, value) Dbc::write<uint64_t>((addr), (value))
+#define WF(addr, value) Dbc::write<float>((addr), (value))
+#define WE(addr, value) Dbc::write<double>((addr), (value))

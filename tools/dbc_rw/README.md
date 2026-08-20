@@ -75,4 +75,4 @@ pid_t p = dbc_rw_pidof("com.tencent.letsgo");
 
 ## C++
 
-可继续用 `kpms/dbc-rw/X.hpp`（内部同类 syscall），或直接链 `dbc_rw.c`。
+可继续用 `kpms/dbc-rw/Dbc.hpp`（`namespace Dbc`，内部同类 syscall），或直接链 `dbc_rw.c`。

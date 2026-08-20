@@ -105,7 +105,7 @@ KernelPatch 模块栈：一次加载 `stealth.kpm`，同时具备 **maps 隐藏�
 | 1 | READ | pid, addr, buf, size | size |
 | 2 | WRITE | pid, addr, buf, size | size |
 
-用户态：`tools/dbc_rw/dbc_rw.h` + `dbc_rw.c`，示例 `example_rw`。C++ 也可 `#include "kpms/dbc-rw/X.hpp"`。
+用户态：`tools/dbc_rw/dbc_rw.h` + `dbc_rw.c`，示例 `example_rw`。C++ 也可 `#include "kpms/dbc-rw/Dbc.hpp"`（`namespace Dbc`）。
 
 ### 5. stealth_inject — 用户态一键注入
 
